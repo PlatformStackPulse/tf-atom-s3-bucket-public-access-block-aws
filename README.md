@@ -1,5 +1,7 @@
 # tf-atom-s3-bucket-public-access-block-aws
 
+> Terraform atom that manages an `aws_s3_bucket_public_access_block` for an existing S3 bucket, denying all public access by default.
+
 [![CI](https://github.com/PlatformStackPulse/tf-atom-s3-bucket-public-access-block-aws/actions/workflows/ci.yml/badge.svg)](https://github.com/PlatformStackPulse/tf-atom-s3-bucket-public-access-block-aws/actions/workflows/ci.yml)
 [![Release](https://github.com/PlatformStackPulse/tf-atom-s3-bucket-public-access-block-aws/actions/workflows/auto-release.yml/badge.svg)](https://github.com/PlatformStackPulse/tf-atom-s3-bucket-public-access-block-aws/actions/workflows/auto-release.yml)
 
@@ -44,12 +46,15 @@ Configures the S3 bucket public access block settings, preventing any public acc
 
 ```hcl
 module "public_access_block" {
-  source = "github.com/PlatformStackPulse/tf-atom-s3-bucket-public-access-block-aws?ref=v1.0.0"
+  source = "git::https://github.com/PlatformStackPulse/tf-atom-s3-bucket-public-access-block-aws.git?ref=v1.0.0"
 
-  context   = module.this.context
+  # tf-label context (namespace / stage / name, or inherit via context)
+  context = module.this.context
+
+  # Required: ID (name) of the bucket to protect
   bucket_id = module.bucket.bucket_id
 
-  # All default to true — override only if needed
+  # All four controls default to true — override only if needed
   # block_public_acls       = true
   # block_public_policy     = true
   # ignore_public_acls      = true
@@ -120,3 +125,26 @@ module "public_access_block" {
 | <a name="output_enabled"></a> [enabled](#output\_enabled) | Whether the module is enabled. |
 | <a name="output_id"></a> [id](#output\_id) | ID of the public access block configuration |
 <!-- END_TF_DOCS -->
+
+## Tests
+
+Unit tests use the Terraform native test framework with a mocked AWS provider (no
+credentials or real API calls). They assert on plan-known values only —
+tf-label context pass-throughs, resource counts, static booleans, and the
+`enabled`/`bucket_id`/`id` outputs — never on computed attributes.
+
+```bash
+terraform init -backend=false
+terraform test -test-directory=tests/unit
+# or
+make test-unit
+```
+
+Coverage:
+
+| Test run | Verifies |
+|----------|----------|
+| `creates_when_enabled` | one resource created; `enabled` and `bucket_id` outputs |
+| `secure_by_default` | all four public-access controls default to `true` |
+| `allows_selective_override` | individual controls can be toggled off |
+| `disabled_creates_nothing` | `enabled = false` creates zero resources; `id`/`bucket_id` outputs are `null` |
